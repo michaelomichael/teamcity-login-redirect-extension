@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Redirect Extension",
+  "version": "0.1",
+  "description": "Keep track of the desired URL when TeamCity redirects us to a different URL for authorisation",
+
+  "permissions": [
+    "webRequest",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://teamcity.bmtapps.bskyb.com/*"
+  ],
+  "background": {
+    "service_worker": "scripts/worker.js"
+  }
+}
