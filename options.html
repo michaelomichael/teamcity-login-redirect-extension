@@ -1,0 +1,43 @@
+<html lang="en">
+<head>
+    <title>TeamGoldfish Options</title>
+    <style>
+        form {
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            padding: 0.5rem 2rem;
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        label {
+            white-space: nowrap;
+        }
+
+        input[type=text] {
+            width: 100%;
+            padding: 0.2rem 0.2rem;
+            font-size: 0.9rem;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<form>
+    <div class="form-group">
+        <label for="baseUrl">Base URL: </label>
+        <input id="baseUrl" name="baseUrl" type="text">
+    </div>
+    <div class="form-group">
+        <input id="enableAutoAadLogin" name="enableAutoAadLogin" type="checkbox" value="true">
+        <label for="enableAutoAadLogin">Automatically click 'Log in using Azure Active Directory'</label>
+    </div>
+</form>
+<script src="scripts/shared.js"></script>
+<script src="scripts/options.js"></script>
+</body>
+</html>

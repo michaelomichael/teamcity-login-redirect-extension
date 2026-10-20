@@ -3,17 +3,20 @@
   "name": "TeamGoldfish: TeamCity Redirect Extension",
   "version": "0.1",
   "description": "Return to the original TeamCity URL after authorisation is complete",
-
   "permissions": [
     "webRequest",
     "storage",
     "tabs"
   ],
   "host_permissions": [
-    "https://teamcity.bmtapps.bskyb.com/*"
+    "https://*/*"
   ],
   "background": {
     "service_worker": "scripts/worker.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
   },
   "icons": {
     "16": "icons/icon-16.png",

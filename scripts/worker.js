@@ -1,20 +1,14 @@
 console.log("Starting the service worker");
 
-const TC_BASE_URL = "https://teamcity.bmtapps.bskyb.com"
+importScripts('shared.js');
+
 const AUTHENTICATION_TEST_PATH = "/authenticationTest.html"
 const LOGIN_PATH = "/login.html"
 const SSO_LOGIN_PATH = "/aadLogin.html"
 const POST_LOGIN_PATH = "/overview.html"
 
-const LISTENER_URL_PATTERN = TC_BASE_URL + "/*"
-const AUTHENTICATION_TEST_URL = TC_BASE_URL + AUTHENTICATION_TEST_PATH
-const LOGIN_URL = TC_BASE_URL + LOGIN_PATH
-const SSO_LOGIN_URL = TC_BASE_URL + SSO_LOGIN_PATH
-const POST_LOGIN_URL = TC_BASE_URL + POST_LOGIN_PATH
-
-
 function storageKeyForTab(tabId) {
-    return `mo_redirect_url_for_tab_${tabId}`;
+    return `team_goldfish_redirect_url_for_tab_${tabId}`;
 }
 
 async function getStoredRedirectUrl(tabId) {
@@ -43,55 +37,109 @@ async function setTabUrl(tabId, url) {
     await chrome.tabs.update(tabId, {"url": url});
 }
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    const url = changeInfo.url;
-    if (url?.indexOf(TC_BASE_URL) === 0) {
-        console.log(`In tab onUpdated [${tabId}], new URL is '${url}'`, changeInfo, tab);
-
-        if (url.indexOf(AUTHENTICATION_TEST_URL) === -1 &&
-            url.indexOf(LOGIN_URL) === -1 &&
-            url.indexOf(SSO_LOGIN_URL) === -1 &&
-            url.indexOf(POST_LOGIN_URL) === -1) {
-            console.log("...will store this URL as a potential redirect URL in case TC sends us to the authentication test page")
-            await setStoredRedirectUrl(tabId, url);
-        } else {
-            console.log("...will NOT store this URL")
-        }
+/**
+ * Ideally, we should be able to get by if we just take the "referer" request header when a request
+ * redirects to the login page. Unfortunately, when you switch tabs and re-activate a TeamCity tab,
+ * it will navigate to /authenticationTest.html (without providing a "referer" header) and _that_
+ * page will redirect to the login page. This means that, after login is complete, we will end up
+ * forwarding the user to the /authenticationTest.html page!
+ *
+ * To get round this, we will watch for any changes to the tab's URL and store the new value
+ * for later use.
+ */
+function teamCityPath(url, teamCityBaseUrl) {
+    if (url?.indexOf(teamCityBaseUrl) === 0) {
+        return url.substring(teamCityBaseUrl.length);
     }
+    return null;
+}
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    const options = await getOptions();
+    const baseUrl = options.baseUrl;
+    const path = teamCityPath(changeInfo.url, baseUrl);
+
+    if (path == null) return;
+
+    console.log(`In tab onUpdated [${tabId}], new path is '${path}' and baseUrl is '${baseUrl}'`, changeInfo, tab);
+
+    if (
+        path.indexOf(AUTHENTICATION_TEST_PATH) === 0 ||
+        path.indexOf(LOGIN_PATH) === 0 ||
+        path.indexOf(SSO_LOGIN_PATH) === 0 ||
+        path.indexOf(POST_LOGIN_PATH) === 0
+    ) {
+        console.log("...will NOT store this URL")
+        return;
+    }
+
+    console.log("...will store this URL as a potential redirect URL in case TC sends us to the authentication test page")
+    await setStoredRedirectUrl(tabId, changeInfo.url);
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
     await clearStoredRedirectUrl(tabId);
 });
 
-chrome.webRequest.onBeforeRedirect.addListener(async (details) => {
+async function interceptBeforeRedirect(details) {
     await logState("BeforeRedirect", details);
 
-    if (details.redirectUrl?.indexOf(LOGIN_URL) === 0) {
-        if (details.url?.indexOf(AUTHENTICATION_TEST_URL) === 0) {
-            console.log(`Detected that the original URL was the full-page authentication test, so won't store that as a redirect URL`);
-        } else {
-            console.log(`Storing the original URL (${details.url}) before our extension does a custom redirect to the AD login page`);
-            await setStoredRedirectUrl(details.tabId, details.url);
-        }
+    const options = await getOptions();
+    const baseUrl = options.baseUrl;
+    const redirectPath = teamCityPath(details.redirectUrl, baseUrl);
+    const originalPath = teamCityPath(details.url, baseUrl);
 
-        await setTabUrl(details.tabId, SSO_LOGIN_URL);
+    if (redirectPath?.indexOf(LOGIN_PATH) !== 0) return;
+
+    if (originalPath?.indexOf(AUTHENTICATION_TEST_PATH) === 0) {
+        console.log(`Detected that the original URL was the full-page authentication test, so won't store that as a redirect URL`);
+    } else {
+        console.log(`Storing the original URL (${details.url}) before login process starts`);
+        await setStoredRedirectUrl(details.tabId, details.url);
     }
-}, {urls: [LISTENER_URL_PATTERN]});
 
-chrome.webRequest.onCompleted.addListener(async (details) => {
+    if (options.enableAutoAadLogin) {
+        console.log("Automatically forwarding to the Azure Active Directory login page");
+        await setTabUrl(details.tabId, `${baseUrl}${SSO_LOGIN_PATH}`);
+    }
+}
+
+async function interceptOnCompleted(details) {
     await logState("Completed", details);
     if (details.type === "main_frame" && details.method !== "OPTIONS") {
         // We've been redirected to the 'old' welcome page
         // Note: if we try to do the next bit in `onBeforeRequest` then we'll end up in an infinite loop,
         // presumably because we've not yet completed sending the auth token to the server?
-        const redirectUrl = await getStoredRedirectUrl(details.tabId)
-        if (redirectUrl) {
-            await setTabUrl(details.tabId, redirectUrl);
-        } else {
+        const redirectUrl = await getStoredRedirectUrl(details.tabId);
+        if (redirectUrl == null) {
             console.log("No URL in storage, so just visit the page as normal");
+            return
         }
-    }
-}, {urls: [POST_LOGIN_URL]});
 
-console.log("Service worker setup complete");
+        // Navigate back to the page that the user had originally tried to visit
+        await setTabUrl(details.tabId, redirectUrl);
+    }
+}
+
+async function recreateListeners() {
+    const options = await getOptions();
+    const baseUrl = options.baseUrl;
+
+    console.log("Recreating listeners. BaseUrl is:", baseUrl);
+
+    const listenerUrlPattern = `${baseUrl}/*`;
+    const postLoginUrl = `${baseUrl}${POST_LOGIN_PATH}`;
+
+    chrome.webRequest.onBeforeRedirect.removeListener(interceptBeforeRedirect);
+    chrome.webRequest.onBeforeRedirect.addListener(interceptBeforeRedirect, {urls: [listenerUrlPattern]});
+
+    chrome.webRequest.onCompleted.removeListener(interceptOnCompleted);
+    chrome.webRequest.onCompleted.addListener(interceptOnCompleted, {urls: [postLoginUrl]});
+}
+
+onOptionsChanged(recreateListeners);
+
+recreateListeners().then(() => {
+    console.log("Service worker setup complete");
+});
+

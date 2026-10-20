@@ -5,8 +5,8 @@
 A browser extension for Google Chrome that returns you to the original page in TeamCity
 when Azure Active Directory login is completed.
 
-It also automatically clicks the "Log in using Azure Active Directory" link for you when
-the `/login.html` page is first displayed.
+It can also automatically click the "Log in using Azure Active Directory" link for you when
+the `/login.html` page is displayed.
 
 
 ## Installation
@@ -18,9 +18,5 @@ First time:
 Or if it's already installed, and you want to pick up the latest changes:
 1. Do a regular `git pull`.
 2. Open chrome and go to `chrome://extensions/`.
-3. Find the "Splunk Tracey Diagrams" extension and click the `↻` "Reload" icon.
-
-
-## TODOs
-* UI to configure the base URL, and to enable/disable the automatic AD link following.
-* Submit to Chrome Web Store.
+3. Find the "TeamGoldfish: TeamCity Redirect Extension" extension and click the `↻` "Reload" icon.
+4. 
