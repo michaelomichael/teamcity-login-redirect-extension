@@ -1,14 +1,16 @@
 console.log("Starting the service worker");
 
-const BASE_URL = "https://teamcity.bmtapps.bskyb.com"
+const TC_BASE_URL = "https://teamcity.bmtapps.bskyb.com"
+const AUTHENTICATION_TEST_PATH = "/authenticationTest.html"
 const LOGIN_PATH = "/login.html"
 const SSO_LOGIN_PATH = "/aadLogin.html"
 const POST_LOGIN_PATH = "/overview.html"
 
-const LISTENER_URL_PATTERN = BASE_URL + "/*"
-const LOGIN_URL = BASE_URL + LOGIN_PATH
-const SSO_LOGIN_URL = BASE_URL + SSO_LOGIN_PATH
-const POST_LOGIN_URL = BASE_URL + POST_LOGIN_PATH
+const LISTENER_URL_PATTERN = TC_BASE_URL + "/*"
+const AUTHENTICATION_TEST_URL = TC_BASE_URL + AUTHENTICATION_TEST_PATH
+const LOGIN_URL = TC_BASE_URL + LOGIN_PATH
+const SSO_LOGIN_URL = TC_BASE_URL + SSO_LOGIN_PATH
+const POST_LOGIN_URL = TC_BASE_URL + POST_LOGIN_PATH
 
 
 function storageKeyForTab(tabId) {
@@ -41,13 +43,38 @@ async function setTabUrl(tabId, url) {
     await chrome.tabs.update(tabId, {"url": url});
 }
 
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    const url = changeInfo.url;
+    if (url?.indexOf(TC_BASE_URL) === 0) {
+        console.log(`In tab onUpdated [${tabId}], new URL is '${url}'`, changeInfo, tab);
+
+        if (url.indexOf(AUTHENTICATION_TEST_URL) === -1 &&
+            url.indexOf(LOGIN_URL) === -1 &&
+            url.indexOf(SSO_LOGIN_URL) === -1 &&
+            url.indexOf(POST_LOGIN_URL) === -1) {
+            console.log("...will store this URL as a potential redirect URL in case TC sends us to the authentication test page")
+            await setStoredRedirectUrl(tabId, url);
+        } else {
+            console.log("...will NOT store this URL")
+        }
+    }
+});
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+    await clearStoredRedirectUrl(tabId);
+});
+
 chrome.webRequest.onBeforeRedirect.addListener(async (details) => {
     await logState("BeforeRedirect", details);
+
     if (details.redirectUrl?.indexOf(LOGIN_URL) === 0) {
-        console.log(`Storing the original URL (${details.url}) before our extension does a custom redirect to the AD login page`);
-        // TODO: If details.url is the /authenticationTest.html page then we need to find out what the last sensible page
-        // was _before_ that.
-        await setStoredRedirectUrl(details.tabId, details.url);
+        if (details.url?.indexOf(AUTHENTICATION_TEST_URL) === 0) {
+            console.log(`Detected that the original URL was the full-page authentication test, so won't store that as a redirect URL`);
+        } else {
+            console.log(`Storing the original URL (${details.url}) before our extension does a custom redirect to the AD login page`);
+            await setStoredRedirectUrl(details.tabId, details.url);
+        }
+
         await setTabUrl(details.tabId, SSO_LOGIN_URL);
     }
 }, {urls: [LISTENER_URL_PATTERN]});
@@ -61,7 +88,6 @@ chrome.webRequest.onCompleted.addListener(async (details) => {
         const redirectUrl = await getStoredRedirectUrl(details.tabId)
         if (redirectUrl) {
             await setTabUrl(details.tabId, redirectUrl);
-            await clearStoredRedirectUrl(details.tabId);
         } else {
             console.log("No URL in storage, so just visit the page as normal");
         }
