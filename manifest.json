@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "TeamCity Redirect Extension",
+  "name": "TeamGoldfish: TeamCity Redirect Extension",
   "version": "0.1",
-  "description": "Keep track of the originally requested URL when TeamCity redirects us to a different URL for authorisation",
+  "description": "Return to the original TeamCity URL after authorisation is complete",
 
   "permissions": [
     "webRequest",
@@ -14,5 +14,11 @@
   ],
   "background": {
     "service_worker": "scripts/worker.js"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   }
 }
