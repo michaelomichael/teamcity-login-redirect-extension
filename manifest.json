@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Redirect Extension",
+  "name": "TeamCity Redirect Extension",
   "version": "0.1",
-  "description": "Keep track of the desired URL when TeamCity redirects us to a different URL for authorisation",
+  "description": "Keep track of the originally requested URL when TeamCity redirects us to a different URL for authorisation",
 
   "permissions": [
     "webRequest",
