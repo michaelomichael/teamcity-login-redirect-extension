@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TeamGoldfish: TeamCity Redirect Extension",
-  "version": "0.1",
+  "version": "0.2",
   "description": "Return to the original TeamCity URL after authorisation is complete",
   "permissions": [
     "webRequest",

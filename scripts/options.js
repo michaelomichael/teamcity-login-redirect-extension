@@ -17,13 +17,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+function showError(elem, message) {
+    const errorElem = document.createElement("div");
+    errorElem.classList.add("error");
+    errorElem.style.color = "red";
+    errorElem.innerText = message;
+    elem.insertAdjacentElement("afterend", errorElem);
+}
+
+function hideErrors() {
+    document.querySelectorAll(".error").forEach(elem => elem.remove());
+}
+
 document.addEventListener('change', async (e) => {
     console.log("Saving option relating to event", e)
+    hideErrors();
 
-    if (e.target.matches('input[type="checkbox"]')) {
+    if (e.target.id === "baseUrl") {
+        e.target.value = e.target.value.replace(/^https:\/\/([^\/]+).*$/, "https://$1");
+        if (e.target.value.indexOf("https://") !== 0) {
+            showError(e.target, "Base URL must start with 'https://'");
+        } else {
+            await putOption(e.target.id, e.target.value);
+        }
+    } else if (e.target.matches('input[type="checkbox"]')) {
         console.log("On page changed (checkbox), storing option", e.target.id, "as", e.target.checked);
         await putOption(e.target.id, e.target.checked);
-
     } else if (e.target.matches('input[type="text"]')) {
         console.log("On page changed (textbox), storing option", e.target.id, "as", e.target.value);
         await putOption(e.target.id, e.target.value);
