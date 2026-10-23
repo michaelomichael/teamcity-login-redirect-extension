@@ -54,6 +54,12 @@ function teamCityPath(url, teamCityBaseUrl) {
     return null;
 }
 
+chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === "install") {
+        chrome.runtime.openOptionsPage();
+    }
+});
+
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const options = await getOptions();
     const baseUrl = options.baseUrl;
