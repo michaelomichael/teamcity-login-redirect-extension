@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TeamGoldfish: TeamCity Redirect Extension",
   "version": "0.2",
-  "description": "Return to the original TeamCity URL after authorisation is complete",
+  "description": "Returns you to the original TeamCity URL after Azure Active Directory authorisation is complete.",
   "permissions": [
     "webRequest",
     "storage",
@@ -12,10 +12,10 @@
     "https://*/*"
   ],
   "background": {
-    "service_worker": "scripts/worker.js"
+    "service_worker": "src/scripts/worker.js"
   },
   "options_ui": {
-    "page": "options.html",
+    "page": "src/ui/options.html",
     "open_in_tab": false
   },
   "icons": {

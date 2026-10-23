@@ -12,18 +12,20 @@ the `/login.html` page is displayed:
 
 
 ## Installation
+### Option 1: From Chrome Web Store
 Available from the [Chrome Web Store](https://chromewebstore.google.com/detail/teamgoldfish-teamcity-red/lggodijnaahbihdgfaohiaoihjehepdl).
 
+Be sure to configure the base URL of your TC server in the extension's options page: <br/>
+[![Options screen](docs/options-screen-small.png)](docs/options-screen-large.png)
+
+### Option 2: Manual Installation
 Or, you can install it manually in developer mode:
 1. Clone this repository.
 2. Open Chrome and type `chrome://extensions/` into the address bar.
 3. Make sure the "Developer mode" toggle in the top-right is turned ON.
 4. Click the "Load unpacked" button and select the `teamcity-login-redirect-extension` folder that you just cloned.
- 
-The options screen should appear when you first install your TC server: <br/>
-[![Options screen](docs/options-screen-small.png)](docs/options-screen-large.png)
 
-### Upgrading
+#### Manual Upgrading
 If it's already installed manually, and you want to pick up the latest changes:
 1. Do a regular `git pull`.
 2. Open chrome and go to `chrome://extensions/`.
